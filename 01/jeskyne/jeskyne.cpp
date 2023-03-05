@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <array>
+#include <vector>
 
 const size_t BASE = 101;
 const size_t MAP_SIZE = (BASE + 2) * (BASE + 2) * (BASE + 2);
@@ -8,6 +9,7 @@ const size_t MAP_SIZE = (BASE + 2) * (BASE + 2) * (BASE + 2);
 struct Coord {
     int x, y, z;
 };
+
 typedef std::array<bool, MAP_SIZE> Caves;
 
 inline bool& atPos(Caves& arr, int x, int y, int z) {
@@ -69,7 +71,7 @@ void printMatrix(Coord& dimen, Caves& caves) {
 
 void solve() {
     Coord dimen;
-    Caves caves;
+    Caves caves = {0};
 
     loadInput(dimen, caves);
     // printMatrix(dimen, caves);
