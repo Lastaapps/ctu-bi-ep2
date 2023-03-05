@@ -98,7 +98,24 @@ Point coordinates(const uint32_t point) {
 }
 
 uint32_t distance(const Point& from, const Point& to) {
+    if (from.first > to.first) {
+        return distance(to, from);
+    }
 
+    int32_t diffX = from.first - to.first;
+    int32_t diffY = from.second - to.second;
+
+    bool isFine = (diffX * diffY) >= 0;
+    if (isFine) {
+        return abs(diffX) + abs(diffY);
+    }
+
+    uint32_t walked = abs(diffX);
+    int32_t toWalk = to.second - walked;
+    if (toWalk < 0) {
+        toWalk = 0;
+    }
+    return walked + toWalk;
 }
 
 bool process() {
@@ -106,18 +123,21 @@ bool process() {
     scanf("%u %u", &from, &to);
     if (from == 0) { return false; }
 
-    auto pointFrom = coordinates(from);
-    auto pointTo = coordinates(to);
+    Point pointFrom = coordinates(from);
+    Point pointTo = coordinates(to);
+    
+    uint32_t dist = distance(pointFrom, pointTo);
 
+    std::printf("%d\n", dist);
     return true;
 }
 
 int main() {
     computeReakpoints();
-    for (uint32_t i = 1; i < 38; ++i) {
-        coordinates(i);        
-    }
-    // while (process());
+    // for (uint32_t i = 1; i < 38; ++i) {
+    //     coordinates(i);        
+    // }
+    while (process());
     return 0;
 }
 
