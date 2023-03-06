@@ -7,6 +7,8 @@ typedef std::vector<uint32_t> Breakpoints;
 Breakpoints breakpoints;
 
 typedef std::pair<int32_t, int32_t> Point;
+// typedef long long unsigned int uint128_t;
+typedef __int128 uint128_t;
 
 void computeReakpoints() {
     const uint32_t max = 1'000'000;
@@ -97,25 +99,50 @@ Point coordinates(const uint32_t point) {
     return {vertical, diagonal};
 }
 
-uint32_t distance(const Point& from, const Point& to) {
-    if (from.first > to.first) {
-        return distance(to, from);
+uint128_t alternatives(uint32_t x, uint32_t y) {
+    const uint32_t sum = x + y;
+    const uint32_t some = x;
+    uint128_t acu = 1;
+    // TODO check of overflow
+    for (uint32_t i = some + 1; i <= sum; ++i) {
+        acu *= i;
     }
+    return acu / (sum - some);
+}
 
-    int32_t diffX = from.first - to.first;
-    int32_t diffY = from.second - to.second;
+std::pair<uint32_t, uint128_t> distance(const Point& from, const Point& to) {
+
+    std::printf("From %d %d\n", from.first, from.second);
+    std::printf("To   %d %d\n", to.first, to.second);
+
+    int32_t diffX = to.first - from.first;
+    int32_t diffY = to.second - from.second;
 
     bool isFine = (diffX * diffY) >= 0;
     if (isFine) {
-        return abs(diffX) + abs(diffY);
+        std::printf("Fine %d %d\n", diffX, diffY);
+        uint128_t alt = alternatives(abs(diffX), abs(diffY));
+        return {abs(diffX) + abs(diffY), alt};
     }
 
     uint32_t walked = abs(diffX);
-    int32_t toWalk = to.second - walked;
-    if (toWalk < 0) {
-        toWalk = 0;
+    int32_t newDiag = from.second - diffX;
+    int32_t toWalk = to.second - newDiag;
+
+    std::printf("Not fine; walked: %d, newDiag: %d, toWalk: %d\n", walked, newDiag, toWalk);
+
+    uint128_t alt;
+    if (toWalk > 0) {
+        alt = alternatives(walked, toWalk);
+    } else if (toWalk == 0) {
+        alt = 1;
+    } else {
+        walked += toWalk;
+        toWalk = abs(toWalk);
+        alt = alternatives(walked, toWalk);
     }
-    return walked + toWalk;
+
+    return {walked + abs(toWalk), alt};
 }
 
 bool process() {
@@ -123,12 +150,19 @@ bool process() {
     scanf("%u %u", &from, &to);
     if (from == 0) { return false; }
 
+    std::printf("Processing %d %d\n", from, to);
     Point pointFrom = coordinates(from);
     Point pointTo = coordinates(to);
     
-    uint32_t dist = distance(pointFrom, pointTo);
+    auto dists = distance(pointFrom, pointTo);
+    auto dist = dists.first;
+    auto alt = dists.second;
 
-    std::printf("%d\n", dist);
+    if (alt == 1) {
+        std::printf("There is %llu route of the shortest length %u.\n", alt, dist);
+    } else {
+        std::printf("There is %llu routes of the shortest length %u.\n", alt, dist);
+    }
     return true;
 }
 
