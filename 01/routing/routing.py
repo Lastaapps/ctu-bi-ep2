@@ -97,8 +97,20 @@ def distance(fr: Tuple[int, int], to: Tuple[int, int]) -> Tuple[int, int]:
         alt = binom(sum, aDiffX)
         return (sum, alt)
     
-    # TODO KABy
-    return (0, 0)
+    new_diag = fr[1] + diffX;
+    new_diff = to[1] - new_diag
+    is_top = new_diff * new_diag > 0
+    # print(f"Not fine {diffX}, {diffY}, {new_diff}, {is_top}")
+
+    if is_top:
+        sum = aDiffX + abs(new_diff)
+        alt = binom(sum, aDiffX)
+        return (sum, alt)
+    
+    aDiffX -= abs(new_diff)
+    sum = aDiffX + abs(new_diff)
+    alt = binom(sum, aDiffX)
+    return (sum, alt)
     
 def test():
     for i in range(6):
@@ -113,7 +125,7 @@ def test():
         point = coordinates(i)
         print(f"{i}: {point}")
     
-test()
+# test()
 
 while True:
     line = input()
@@ -121,6 +133,7 @@ while True:
     if x == 0:
         break;
     
+    # print(f"\nProcessing {x} {y}")
     fr = coordinates(x)
     to = coordinates(y)
     dist, alt = distance(fr, to)
@@ -128,4 +141,4 @@ while True:
     if alt == 1:
         print(f"There is {alt} route of the shortest length {dist}.");
     else:
-        print(f"There is {alt} routes of the shortest length {dist}.");
+        print(f"There are {alt} routes of the shortest length {dist}.");
