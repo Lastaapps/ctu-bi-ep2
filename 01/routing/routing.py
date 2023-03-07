@@ -111,6 +111,25 @@ def distance(fr: Tuple[int, int], to: Tuple[int, int]) -> Tuple[int, int]:
     sum = aDiffX + abs(new_diff)
     alt = binom(sum, aDiffX)
     return (sum, alt)
+
+def assert_equal(name: str, actual, expected):
+    if actual != expected:
+        print(f"{name} differs, actual: {actual} != expected: {expected}")
+        assert actual == expected
+    
+def my_assert_impl(x: int, y: int, e_dist: int, e_alt: int):
+    print(f"Testing {x} {y}")
+    fr = coordinates(x)
+    to = coordinates(y)
+    dist, alt = distance(fr, to)
+    assert_equal("Dist", dist, e_dist) 
+    assert_equal("Alt", alt, e_alt) 
+    
+
+def my_assert(x: int, y: int, e_dist: int, e_alt: int):
+    my_assert_impl(x, y, e_dist, e_alt)
+    my_assert_impl(y, x, e_dist, e_alt)
+
     
 def test():
     for i in range(6):
@@ -125,7 +144,56 @@ def test():
         point = coordinates(i)
         print(f"{i}: {point}")
     
-# test()
+    # Fine
+    my_assert(1, 17, 2, 1)
+    my_assert(1, 18, 2, 2)
+    my_assert(1, 19, 2, 1)
+    my_assert(1, 34, 3, 1)
+    my_assert(1, 35, 3, 3)
+    my_assert(1, 36, 3, 3)
+    my_assert(1, 37, 3, 1)
+    my_assert(1, 11, 2, 1)
+    my_assert(1, 12, 2, 2)
+    my_assert(1, 13, 2, 1)
+    my_assert(1, 25, 3, 1)
+    my_assert(1, 26, 3, 3)
+    my_assert(1, 27, 3, 3)
+    my_assert(1, 28, 3, 1)
+
+    # Not fine
+    my_assert(1, 51, 4, 6)
+    my_assert(1, 30, 3, 3)
+    my_assert(1, 15, 2, 1)
+    my_assert(1, 16, 2, 2)
+    my_assert(1, 52, 4, 4)
+    my_assert(1, 31, 3, 1)
+    my_assert(1, 32, 3, 3)
+    my_assert(1, 33, 3, 3)
+    my_assert(1,  8, 2, 2)
+    my_assert(1,  9, 2, 1)
+    my_assert(1, 10, 2, 2)
+    my_assert(1, 20, 3, 3)
+    my_assert(1, 21, 3, 3)
+    my_assert(1, 22, 3, 1)
+    my_assert(1, 23, 3, 3)
+    my_assert(1, 24, 3, 3)
+
+    # Not from 1
+    my_assert(26, 27, 1, 1)
+    my_assert(8, 24, 3, 3)
+    my_assert(20, 24, 4, 6)
+    my_assert(18, 38, 1, 1)
+    my_assert(30, 33, 3, 6)
+    my_assert(5, 52, 3, 3)
+    my_assert(18, 31, 4, 6)
+    my_assert(36, 10, 4, 6)
+    my_assert(37, 24, 5, 35)
+    my_assert(27, 15, 3, 1)
+    my_assert(20, 29, 6, 56)
+    my_assert(12, 34, 5, 5)
+    my_assert( 7, 15, 3, 3)
+
+test()
 
 while True:
     line = input()
