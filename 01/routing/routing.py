@@ -1,5 +1,7 @@
 #!/bin/python
 
+from typing import Tuple
+
 breakpoints = []
 
 def compute_breakpoints():
@@ -35,7 +37,7 @@ def lower_bound(coll, item) -> int:
     return start
             
 
-def coordinates(point: int) -> (int, int):
+def coordinates(point: int) -> Tuple[int, int]:
     if point == 1:
         return (0, 0)
     
@@ -75,8 +77,35 @@ def coordinates(point: int) -> (int, int):
     
     return (vertical, diagonal)
 
-
+def binom(n: int, k: int) -> int:
+    acu = 1
+    for i in range(k + 1, n + 1):
+        acu *= i
+    for i in range(1, n - k + 1):
+        acu //= i
+    return acu
+    
+def distance(fr: Tuple[int, int], to: Tuple[int, int]) -> Tuple[int, int]:
+    diffX = fr[0] - to[0]
+    diffY = fr[1] - to[1]
+    aDiffX = abs(diffX)
+    aDiffY = abs(diffY)
+    
+    is_fine = (diffX * diffY) >= 0
+    if is_fine:
+        sum = aDiffX + aDiffY
+        alt = binom(sum, aDiffX)
+        return (sum, alt)
+    
+    # TODO KABy
+    return (0, 0)
+    
 def test():
+    for i in range(6):
+        print(binom(5, i))
+    for i in range(7):
+        print(binom(6, i))
+
     for i in range(2, 42):
         level = lower_bound(breakpoints, i)
         print(f"{i}: {level}")
@@ -84,5 +113,19 @@ def test():
         point = coordinates(i)
         print(f"{i}: {point}")
     
-    
 test()
+
+while True:
+    line = input()
+    (x, y) = [int(x) for x in line.split(" ")]
+    if x == 0:
+        break;
+    
+    fr = coordinates(x)
+    to = coordinates(y)
+    dist, alt = distance(fr, to)
+    
+    if alt == 1:
+        print(f"There is {alt} route of the shortest length {dist}.");
+    else:
+        print(f"There is {alt} routes of the shortest length {dist}.");
