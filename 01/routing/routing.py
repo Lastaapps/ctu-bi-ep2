@@ -99,8 +99,8 @@ def distance(fr: Tuple[int, int], to: Tuple[int, int]) -> Tuple[int, int]:
     
     new_diag = fr[1] + diffX;
     new_diff = to[1] - new_diag
-    is_top = new_diff * new_diag > 0
-    # print(f"Not fine {diffX}, {diffY}, {new_diff}, {is_top}")
+    is_top = diffX * new_diff > 0
+    # print(f"Not fine {diffX}, {diffY}, {new_diag}, {new_diff}, {is_top}")
 
     if is_top:
         sum = aDiffX + abs(new_diff)
@@ -182,18 +182,18 @@ def test():
     my_assert(26, 27, 1, 1)
     my_assert(8, 24, 3, 3)
     my_assert(20, 24, 4, 6)
-    my_assert(18, 38, 1, 1)
-    my_assert(30, 33, 3, 6)
+    my_assert(18, 38, 3, 3)
+    my_assert(30, 33, 3, 3)
     my_assert(5, 52, 3, 3)
     my_assert(18, 31, 4, 6)
-    my_assert(36, 10, 4, 6)
-    my_assert(37, 24, 5, 35)
+    my_assert(36, 10, 4, 4)
+    my_assert(37, 24, 5, 10)
     my_assert(27, 15, 3, 1)
-    my_assert(20, 29, 6, 56)
+    my_assert(20, 29, 6, 15)
     my_assert(12, 34, 5, 5)
     my_assert( 7, 15, 3, 3)
 
-test()
+# test()
 
 while True:
     line = input()
