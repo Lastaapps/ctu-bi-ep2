@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 #include <array>
@@ -21,7 +22,8 @@ void operator+=(Position& l, const Position& r) {
     l.second += r.second;
 }
 
-int toIndex(const Config& config) {
+int toIndex(Config config) {
+    std::sort(config.begin(), config.end());
     return  0
         + config[0].first  * 1
         + config[0].second * 8
@@ -68,12 +70,11 @@ void enqueueWithDelta(const Config& config, const char i, const char dist, std::
         return;
     }
     visited[nextIndex] = dist + 1;
-    queue.emplace(newConfig);
+    queue.push(newConfig);
 }
 
-template<bool larger>
 void enqueueNeibours(const Config& config, const char dist, std::vector<char>& visited, std::queue<Config>& queue) {
-    if (dist + (larger ? 1 : 0) > STEPS_NEEDED + 1) return;
+    if (dist >= STEPS_NEEDED + 1) return;
 
     for (int i = 0; i < PROBLEM_SIZE; ++i) {
         enqueueWithDelta(config, i, dist, visited, queue, { 1,  0});
@@ -89,7 +90,7 @@ bool solve() {
     readLine(to);
 
     std::vector<char> visitedFrom(8 * 8 * 8 * 8 * 8 * 8 * 8 * 8);
-    std::vector<char> visitedTo(8 * 8 * 8 * 8 * 8 * 8 * 8 * 8);
+    std::vector<char> visitedTo  (8 * 8 * 8 * 8 * 8 * 8 * 8 * 8);
 
     {
         std::queue<Config> queue;
@@ -103,7 +104,13 @@ bool solve() {
             const int index = toIndex(config);
             const char dist = visitedFrom[index];
 
-            enqueueNeibours<true>(config, dist, visitedFrom, queue);
+            // std::cout << "Fr: " << (int) dist << " ";
+            // for (int i = 0; i < 4; ++i) {
+            //     std::cout << "[" << (int) config[i].first <<  "," << (int) config[i].second << "] ";
+            // }
+            // std::cout << std::endl;
+
+            enqueueNeibours(config, dist, visitedFrom, queue);
         }
     }
 
@@ -118,12 +125,19 @@ bool solve() {
 
             const int index = toIndex(config);
             const char dist = visitedTo[index];
+
+            // std::cout << "To: " << (int) dist << " ";
+            // for (int i = 0; i < 4; ++i) {
+            //     std::cout << "[" << (int) config[i].first <<  "," << (int) config[i].second << "] ";
+            // }
+            // std::cout << std::endl;
+
             if (visitedFrom[index] != 0) {
                 printf("YES\n");
                 return true;
             }
 
-            enqueueNeibours<false>(config, dist, visitedTo, queue);
+            enqueueNeibours(config, dist, visitedTo, queue);
         }
     }
 
@@ -135,6 +149,4 @@ int main(void) {
     while(solve());
     return 0;
 }
-
-
 
