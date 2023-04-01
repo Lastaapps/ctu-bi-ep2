@@ -27,15 +27,17 @@ struct SearchDfs {
         // printf("[%d] Got id %d\n", node, id);
         int low = id;
 
+        int visitedChildren = 0;
         for (const auto target : graph[node]) {
             if (target == parent) continue;
             if (ins[target] == 0) {
                 const int childLow = searchArticulations(node, target);
 
                 low = std::min(low, childLow);
+                visitedChildren++;
 
                 if (childLow >= id) {
-                    if (parent != -1 || graph[node].size() > 1) {
+                    if (parent != -1 || visitedChildren > 1) {
                         // printf("[%d] Marked as articulation\n", node);
                         artFound.insert(node);
                     }

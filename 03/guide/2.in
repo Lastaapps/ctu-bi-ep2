@@ -5,4 +5,20 @@ a b
 b c
 c d
 
+6
+d e f a b c
+4
+b a
+b c
+d e
+f e
+
+4
+a b c d
+4
+a b
+b c
+c d
+d a
+
 0
