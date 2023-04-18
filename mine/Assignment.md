@@ -8,7 +8,7 @@ Za jak dlouho se Tetička s Buřtíkem může co nejrychleji ze svého bytu (zas
 
 ## Vstup
 Na vstupu přijde řádek s číslem `N` s počtem případů k vyřešení.
-Pro každý vstup následuje řádek s číslem `Z` - počet všech zastávek města - a číly zastávek 'H' a 'E' - počáteční a koncová.
+Pro každý vstup následuje řádek s číslem `Z` - počet všech zastávek města - a čísly zastávek `H` a `E` - počáteční a koncová.
 poté další s číslem `P` s počtem parků, poté tento počet řádků s 2 čísly zastávek spojených parkem a 1 číslo s vzdáleností cesty parkem v kilometrech.
 Poté následuje číslo `T` s počtem tramvajových linek a linky ve stejném formátu jako výše.
 Čísla zastávek jsou v intervalu `[0, Z)`.
@@ -19,12 +19,41 @@ Na výstupu bude udán počet minut cesty, případně bědování tety, že si 
 ## Ukázka
 ### Vstup
 ```
-TODO
+3
+
+6 0 5
+4
+0 1 1
+2 3 1
+2 5 2
+3 4 1
+4
+2 1 2
+4 5 10
+2 4 1
+0 2 40
+
+4 3 2
+4
+3 0 4
+1 0 1
+0 2 4
+0 3 3
+2
+0 3 5
+2 0 8
+
+4 0 3
+1
+0 1 1
+2
+1 2 2
+2 3 3
 ```
 
 ### Výstup
 ```
-Za 1 min tam budu.
-Za 30 min tam budu.
+Za 49 min. tam budu.
+Za 56 min. tam budu.
 O beda, o beda, co ja budu ted delat?
 ```
