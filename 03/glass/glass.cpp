@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <numeric>
 #include <string>
+#include <vector>
 
 std::string readLine() {
     // char* array;
@@ -37,33 +38,36 @@ void solve() {
     const char* lineRaw = line.c_str();
     const char* lineEnd = line.c_str() + len;
 
-    std::set<uint32_t> valid;
+    std::vector<uint32_t> valid;
+    std::vector<uint32_t> nextValid;
     for (uint32_t i = 0; i < len; ++i) {
-        valid.insert(i);
+        valid.emplace_back(i);
     }
 
-    for (const char * ptr = lineRaw; ptr < lineEnd; ++ptr) {
+    for (const char * ptr = lineRaw; ptr < lineEnd && valid.size() > 1; ++ptr) {
         // printf("new round\n");
 
-        auto worst = valid.begin();
-        for (auto itr = valid.begin(); itr != valid.end();) {
+        // the best so far
+        char best = 127;
+        for (auto itr = valid.begin(); itr != valid.end(); ++itr) {
 
             const char c = *(ptr + *itr);
-            const char w = *(ptr + *worst);
-            // printf("check: %2d %c\n", *itr,   c);
-            // printf("worst: %2d %c\n", *worst, w);
+            // printf("check: %2d %c\n", *itr, c);
+            // printf("best:     %c\n", best);
 
-            if (c < w) {
-                valid.erase(valid.begin(), worst);
-                valid.erase(worst);
-                worst = itr++;
-            } else if (c > w) {
-                auto oldItr = itr++;
-                valid.erase(oldItr);
-            } else if (c == w) {
-                worst = itr++;
+            if (c < best) {
+                best = c;
+                nextValid.clear();
+            } else if (c > best) {
+                continue;
+            } else if (c == best) {
             }
+            nextValid.emplace_back(*itr);
         }
+
+        // nextValid will be cleared when it hits the next conflict
+        std::swap(valid, nextValid);
+
         // printf("%c wins\n[", *(ptr + *worst));
         // for (uint32_t item : valid) {
         //     printf("%2d, ", item);
@@ -71,7 +75,7 @@ void solve() {
         // printf("]\n");
     }
 
-    printf("%u\n", *valid.begin() + 1);
+    printf("%u\n", valid[0] + 1);
 }
 
 int main(void) {
