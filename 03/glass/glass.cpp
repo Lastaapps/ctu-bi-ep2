@@ -67,6 +67,36 @@ void solve() {
 
         // nextValid will be cleared when it hits the next conflict
         std::swap(valid, nextValid);
+        // printf("["); for(auto item : valid) { printf("%u, ", item); } printf("]\n");
+
+        const size_t dist = ptr - lineRaw;
+        const size_t modifiedFirst = valid[0] + (lineEnd - lineRaw);
+        valid.push_back(modifiedFirst);
+
+        size_t atMostEaten = 0;
+        for (size_t i = 0; i < valid.size() - 1; ++i) {
+            size_t eaten = 0;
+
+            while (i < valid.size() - 1 && valid[i] + dist == valid[i + 1]) {
+                // printf("Is valid for index %lu and dist %lu\n", i, dist);
+                ++eaten;
+                valid.erase(valid.begin() + i + 1);
+            }
+            if (eaten < atMostEaten) {
+                valid.erase(valid.begin() + i);
+                --i;
+            } else {
+                atMostEaten = eaten;
+            }
+        }
+        ptr += atMostEaten * dist;
+
+        if (*valid.rbegin() == modifiedFirst) {
+            valid.pop_back();
+        }
+
+
+        // printf("["); for(auto item : valid) { printf("%u, ", item); } printf("]\n");
 
         // printf("%c wins\n[", *(ptr + *worst));
         // for (uint32_t item : valid) {
