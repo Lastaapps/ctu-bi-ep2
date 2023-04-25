@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": ["<", "/mnt/d/Dokumenty/Dokumenty/CVUT/BI-EP2/04/1.in"],
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "cwd": "/mnt/d/Dokumenty/Dokumenty/CVUT/BI-EP2/04/euler",
+      "program": "/mnt/d/Dokumenty/Dokumenty/CVUT/BI-EP2/04/euler/build/Debug/outDebug",
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}
