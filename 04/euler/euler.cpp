@@ -44,12 +44,14 @@ void solve() {
     cin >> n >> m;
     n += 2;
 
+    size_t undirectedCnt = 0;
     vector<Edge> undirected;
+    vector<vector<size_t>> undirectedMatrix(n, vector<size_t>(n));
     Flow flow(n);
     vector<vector<size_t>> graph(n);
     vector<vector<size_t>> originalGraph(n);
 
-    cout << "Creating graph" << endl;
+    // cout << "Creating graph" << endl;
     // create graph
     for (size_t i = 0; i < m; ++i) {
         size_t u, v;
@@ -72,16 +74,22 @@ void solve() {
             }
             originalGraph[u].emplace_back(v);
         } else if (t == 'U') {
-            undirected.emplace_back(Edge{u, v});
-            graph[u].emplace_back(v);
-            graph[v].emplace_back(u);
-            flow.setCapacity(u, v, 1);
-            flow.setCapacity(v, u, 1);
+            size_t cap = flow.getCapacity(u, v);
+            if (cap == 0) {
+                undirected.emplace_back(Edge{u, v});
+                graph[u].emplace_back(v);
+                graph[v].emplace_back(u);
+            }
+            ++undirectedCnt;
+            ++undirectedMatrix[u][v];
+            ++undirectedMatrix[v][u];
+            flow.setCapacity(u, v, cap + 1);
+            flow.setCapacity(v, u, cap + 1);
         } else {
         }
     }
 
-    cout << "Solving flows" << endl;
+    // cout << "Solving flows" << endl;
     // solve flows
     while(true) {
         queue<size_t> queue;
@@ -127,83 +135,68 @@ void solve() {
 end:;
     }
 
-    cout << "Checking" << endl;
+    // cout << "Checking" << endl;
     // check validity - all mins accomplished
     size_t flowSum = 0;
     for (const auto& v : graph[0]) {
         flowSum += flow.getFlow(0, v);
     }
 
-    if (flowSum + undirected.size() != m) { FAIL; }
+    // TODO validate
+    if (flowSum + undirectedCnt != m) { FAIL; }
 
     // check validity - all undirected got directed
-    for (const auto& edge : undirected) {
-        size_t f1 = flow.getFlow(edge.u1, edge.u2);
-        size_t f2 = flow.getFlow(edge.u2, edge.u1);
-        if (f1 == 1 && f2 == 0) {
-            cout << "Oriented: " << edge.u1 << " -> " << edge.u2 << endl;
-            originalGraph[edge.u1].emplace_back(edge.u2);
-        } else 
-        if (f1 == 0 && f2 == 1) {
-            cout << "Oriented: " << edge.u2 << " -> " << edge.u1 << endl;
-            originalGraph[edge.u2].emplace_back(edge.u1);
-        } else { FAIL; }
+    for (auto [u, v] : undirected) {
+        const size_t edgeCnt = undirectedMatrix[u][v];
+        size_t f1 = flow.getFlow(u, v);
+        size_t f2 = flow.getFlow(v, u);
+        if (f1 < f2) {
+            std::swap(f1, f2);
+            std::swap(u, v);
+        }
+
+        if ((edgeCnt - f1) % 2 != 0) { FAIL; }
+
+        size_t split = (edgeCnt - f1) / 2;
+        for (size_t i = 0; i < f1 + split; ++i) {
+            // cout << "Oriented: " << u << " -> " << v << endl;
+            originalGraph[u].emplace_back(v);
+        }
+
+        for (size_t i = f1 + split; i < edgeCnt; ++i) {
+            // cout << "Oriented: " << v << " -> " << u << endl;
+            originalGraph[v].emplace_back(u);
+        }
     }
 
     // TODO maybe check degrees
 
-    cout << "Finding move" << endl;
+    // cout << "Finding move" << endl;
     vector<vector<size_t>> parents(n);
-    {
-        // find sequence
-        vector<vector<bool>> used(m, vector<bool>(m));
-        // TODO decrease degrees
-        vector<bool> saturated(n);
-
-        size_t usedCnt = 0;
-        while(usedCnt != m) {
-            size_t startFrom = 1;
-            while (true) {
-                cout << "Trying start from " << startFrom << endl;
-                if (!saturated[startFrom]) {
-                    for (const auto& to : originalGraph[startFrom]) {
-                        if (used[startFrom][to]) { continue; }
-                        goto startExecution;
-                    }
-                    saturated[startFrom] = true;
-                }
-                for (const auto& u : parents[startFrom]) {
-                    if (saturated[u]) { continue; }
-                    startFrom = u;
-                    break;
-                }
+    for(size_t usedCnt = 0; usedCnt != m; ) {
+        size_t startFrom = 1;
+        while (true) {
+            // cout << "Trying start from " << startFrom << endl;
+            if (!originalGraph[startFrom].empty()) {
+                break;
             }
-startExecution:
-            cout << "Starting from " << startFrom << endl;
-            size_t u = startFrom;
-            do {
-                cout << "Running for " << u << endl;
-                const size_t oldU = u;
-                for (const auto& v : originalGraph[u]) {
-                    if (used[u][v]) { continue; }
-                    ++usedCnt;
-                    used[u][v] = true;
-                    parents[v].emplace_back(u);
-                    u = v;
-                    break;
-                }
-                size_t usedEdges = 0;
-                for (const auto& v : originalGraph[oldU]) {
-                    if (used[oldU][v]) { ++usedEdges; }
-                }
-                if (usedEdges == originalGraph[oldU].size()) {
-                    saturated[oldU] = true;
-                }
-            } while(u != startFrom);
+            startFrom = parents[startFrom].back();
         }
+
+        // cout << "Starting from " << startFrom << endl;
+        size_t u = startFrom;
+        do {
+            // cout << "Running for " << u << endl;
+            auto& orgRef = originalGraph[u];
+            const size_t v = orgRef.back();
+            orgRef.pop_back();
+            ++usedCnt;
+            parents[v].emplace_back(u);
+            u = v;
+        } while(u != startFrom);
     }
 
-    cout << "Outputting" << endl;
+    // cout << "Outputting" << endl;
     bool isFirst = true;
     for(size_t u = 1; ;) {
         cout << (isFirst ? "" : " ") << u;
@@ -214,7 +207,7 @@ startExecution:
         u = par.back();
         par.pop_back();
     }
-    cout << "\n";
+    cout << "\n\n";
 }
 
 int main(void) {
