@@ -31,7 +31,7 @@ ostream& operator<<(ostream& out, const Edge& edge) noexcept {
     return out << "[" << edge.gopher << "->" << edge.hole << " = " << edge.length << "]";
 }
 
-#define SUCC(time) cout << std::fixed << std::setprecision(3) << round((time) * 1000) / 1000 << "\n\n"; return
+#define SUCC(time) cout << std::fixed << std::setprecision(3) << ceil((time) * 1000) / 1000 << "\n\n"; return
 #define FAIL cout << "Too bad.\n\n"; return
 
 struct DfsG final {
@@ -68,8 +68,9 @@ struct DfsG final {
         if (gopherPaired[id]) {
             for (const auto& edge : gopherEdges[id]) {
                 // TODO whole edge
-                if (edge > addedEdge) { continue; }
-                if (pairedMatrix[edge.gopher][edge.hole]) { continue; }
+                if (edge > addedEdge) { break; }
+                assert(!pairedMatrix[edge.gopher][edge.hole]);
+                // if (pairedMatrix[edge.gopher][edge.hole]) { continue; }
 
                 const bool res = processHole(addedEdge, edge.hole);
                 if (res) {
@@ -90,15 +91,19 @@ struct DfsG final {
         if (holesPaired[id]) {
             for (const auto& edge : holesEdges[id]) {
                 // TODO whole edge
-                if (edge > addedEdge) { continue; }
+                if (edge > addedEdge) { break; }
                 if (!pairedMatrix[edge.gopher][edge.hole]) { continue; }
 
+                pairedMatrix[edge.gopher][edge.hole] = false;
                 const bool res = processGopher(addedEdge, edge.gopher);
                 if (res) {
                     // cout << "H -> G: Success for " << edge << endl;
-                    pairedMatrix[edge.gopher][edge.hole] = false;
+                    // pairedMatrix[edge.gopher][edge.hole] = false;
                     return true;
+                } else {
+                    pairedMatrix[edge.gopher][edge.hole] = true;
                 }
+                break;
             }
             return false;
         } else {
@@ -155,15 +160,19 @@ struct DfsH final {
         if (gopherPaired[id]) {
             for (const auto& edge : gopherEdges[id]) {
                 // TODO whole edge
-                if (edge > addedEdge) { continue; }
+                if (edge > addedEdge) { break; }
                 if (!pairedMatrix[edge.gopher][edge.hole]) { continue; }
 
+                pairedMatrix[edge.gopher][edge.hole] = false;
                 const bool res = processHole(addedEdge, edge.hole);
                 if (res) {
                     // cout << "G -> H: Success for " << edge << endl;
-                    pairedMatrix[edge.gopher][edge.hole] = false;
+                    // pairedMatrix[edge.gopher][edge.hole] = false;
                     return true;
+                } else {
+                    pairedMatrix[edge.gopher][edge.hole] = true;
                 }
+                break;
             }
             return false;
         } else {
@@ -178,8 +187,9 @@ struct DfsH final {
         if (holesPaired[id]) {
             for (const auto& edge : holesEdges[id]) {
                 // TODO whole edge
-                if (edge > addedEdge) { continue; }
-                if (pairedMatrix[edge.gopher][edge.hole]) { continue; }
+                if (edge > addedEdge) { break; }
+                // if (pairedMatrix[edge.gopher][edge.hole]) { continue; }
+                assert(!pairedMatrix[edge.gopher][edge.hole]);
 
                 const bool res = processGopher(addedEdge, edge.gopher);
                 if (res) {
