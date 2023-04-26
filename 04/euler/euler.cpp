@@ -89,6 +89,12 @@ void solve() {
         }
     }
 
+    for (size_t u = 1; u < n - 2; ++u) {
+        size_t commFlow = std::min(flow.getReserve(0, u), flow.getReserve(u, n - 1));
+        flow.sendFlow(0, u, commFlow);
+        flow.sendFlow(u, n - 1, commFlow);
+    }
+
     // cout << "Solving flows" << endl;
     // solve flows
     while(true) {
@@ -175,12 +181,17 @@ end:;
     vector<vector<size_t>> parents(n);
     for(size_t usedCnt = 0; usedCnt != m; ) {
         size_t startFrom = 1;
+        vector<vector<bool>> used(m, vector<bool>(m));
         while (true) {
             // cout << "Trying start from " << startFrom << endl;
             if (!originalGraph[startFrom].empty()) {
                 break;
             }
-            startFrom = parents[startFrom].back();
+            for (const auto& parent : parents[startFrom]) {
+                if (used[startFrom][parent]) { continue; }
+                used[startFrom][parent] = true;
+                startFrom = parent;
+            }
         }
 
         // cout << "Starting from " << startFrom << endl;
@@ -211,6 +222,9 @@ end:;
 }
 
 int main(void) {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+
     size_t cases;
     cin >> cases;
     for (size_t i = 0; i < cases; ++i) {

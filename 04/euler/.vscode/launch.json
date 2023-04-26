@@ -5,7 +5,7 @@
       "name": "C/C++ Runner: Debug Session",
       "type": "cppdbg",
       "request": "launch",
-      "args": ["<", "/mnt/d/Dokumenty/Dokumenty/CVUT/BI-EP2/04/1.in"],
+      "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
       "cwd": "/mnt/d/Dokumenty/Dokumenty/CVUT/BI-EP2/04/euler",
