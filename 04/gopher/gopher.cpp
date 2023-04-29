@@ -62,19 +62,23 @@ struct DfsG final {
 
     private:
     bool processGopher(const Edge& addedEdge, uint32_t id) noexcept {
+        // if (addedEdge.gopher == id) {
+        //     cerr << "Reached starting point" << endl;
+        //     return true;
+        // }
+
         if (visitedGophers[id]) { return false; }
         visitedGophers[id] = true;
 
         if (gopherPaired[id]) {
             for (const auto& edge : gopherEdges[id]) {
-                // TODO whole edge
                 if (edge > addedEdge) { break; }
                 assert(!pairedMatrix[edge.gopher][edge.hole]);
-                // if (pairedMatrix[edge.gopher][edge.hole]) { continue; }
 
+                cerr << "G -> H: Trying for " << edge << endl;
                 const bool res = processHole(addedEdge, edge.hole);
                 if (res) {
-                    // cout << "G -> H: Success for " << edge << endl;
+                    cerr << "G -> H: Success for " << edge << endl;
                     pairedMatrix[edge.gopher][edge.hole] = true;
                     return true;
                 }
@@ -90,15 +94,14 @@ struct DfsG final {
 
         if (holesPaired[id]) {
             for (const auto& edge : holesEdges[id]) {
-                // TODO whole edge
                 if (edge > addedEdge) { break; }
                 if (!pairedMatrix[edge.gopher][edge.hole]) { continue; }
 
                 pairedMatrix[edge.gopher][edge.hole] = false;
+                cerr << "H -> G: Trying for " << edge << endl;
                 const bool res = processGopher(addedEdge, edge.gopher);
                 if (res) {
-                    // cout << "H -> G: Success for " << edge << endl;
-                    // pairedMatrix[edge.gopher][edge.hole] = false;
+                    cerr << "H -> G: Success for " << edge << endl;
                     return true;
                 } else {
                     pairedMatrix[edge.gopher][edge.hole] = true;
@@ -114,8 +117,9 @@ struct DfsG final {
     public:
     bool findPath(const Edge& addedEdge) noexcept {
         if (gopherPaired[addedEdge.gopher]) { return false; }
-        visitedGophers[addedEdge.gopher] = true; // TODO may break cyclic paths, idk
+        visitedGophers[addedEdge.gopher] = true;
 
+        cerr << "  -> H: Success for " << addedEdge << endl;
         const bool res = processHole(addedEdge, addedEdge.hole);
         if (res) {
             pairedMatrix[addedEdge.gopher][addedEdge.hole] = true;
@@ -153,21 +157,20 @@ struct DfsH final {
     {}
 
     private:
-    bool processGopher(const Edge& addedEdge, uint32_t id) noexcept {
+    bool processGopher(const Edge& addedEdge, uint32_t id, bool wasStartPaired) noexcept {
         if (visitedGophers[id]) { return false; }
         visitedGophers[id] = true;
 
         if (gopherPaired[id]) {
             for (const auto& edge : gopherEdges[id]) {
-                // TODO whole edge
                 if (edge > addedEdge) { break; }
                 if (!pairedMatrix[edge.gopher][edge.hole]) { continue; }
 
                 pairedMatrix[edge.gopher][edge.hole] = false;
-                const bool res = processHole(addedEdge, edge.hole);
+                cerr << "G -> H: Trying for " << edge << endl;
+                const bool res = processHole(addedEdge, edge.hole, wasStartPaired);
                 if (res) {
-                    // cout << "G -> H: Success for " << edge << endl;
-                    // pairedMatrix[edge.gopher][edge.hole] = false;
+                    cerr << "G -> H: Success for " << edge << endl;
                     return true;
                 } else {
                     pairedMatrix[edge.gopher][edge.hole] = true;
@@ -176,24 +179,33 @@ struct DfsH final {
             }
             return false;
         } else {
+            // if (wasStartPaired) { return false; }
             gopherPaired[id] = true;
             return true;
         }
     }
-    bool processHole(const Edge& addedEdge, uint32_t id) noexcept {
+    bool processHole(const Edge& addedEdge, uint32_t id, bool wasStartPaired) noexcept {
+        // if (addedEdge.hole == id) {
+        //     if (wasStartPaired) {
+        //         cerr << "Reached starting point" << endl;
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // }
+
         if (visitedHoles[id]) { return false; }
         visitedHoles[id] = true;
 
         if (holesPaired[id]) {
             for (const auto& edge : holesEdges[id]) {
-                // TODO whole edge
                 if (edge > addedEdge) { break; }
-                // if (pairedMatrix[edge.gopher][edge.hole]) { continue; }
                 assert(!pairedMatrix[edge.gopher][edge.hole]);
 
-                const bool res = processGopher(addedEdge, edge.gopher);
+                cerr << "H -> G: Trying for " << edge << endl;
+                const bool res = processGopher(addedEdge, edge.gopher, wasStartPaired);
                 if (res) {
-                    // cout << "H -> G: Success for " << edge << endl;
+                    cerr << "H -> G: Success for " << edge << endl;
                     pairedMatrix[edge.gopher][edge.hole] = true;
                     return true;
                 }
@@ -205,10 +217,13 @@ struct DfsH final {
     }
     public:
     bool findPath(const Edge& addedEdge) noexcept {
+        const bool wasPaired = holesPaired[addedEdge.hole];
+        // if (holesPaired[addedEdge.hole]) { return false; }
         if (holesPaired[addedEdge.hole]) { return false; }
-        visitedHoles[addedEdge.hole] = true; // TODO may break cyclic paths, idk
+        visitedHoles[addedEdge.hole] = true;
 
-        const bool res = processGopher(addedEdge, addedEdge.gopher);
+        cerr << "  -> G: Success for " << addedEdge << endl;
+        const bool res = processGopher(addedEdge, addedEdge.gopher, wasPaired);
         if (res) {
             pairedMatrix[addedEdge.gopher][addedEdge.hole] = true;
             holesPaired[addedEdge.hole] = true;
@@ -261,24 +276,28 @@ void solve(size_t caseId) {
 
     if (toCover > (int32_t) holesCnt) { FAIL; }
 
+    for (const auto& edge : edges) {
+        cout << edge << endl;
+    }
+
     auto edgeItr = edges.begin();
     for (; toCover > 0 && edgeItr != edges.end(); edgeItr++) {
         const auto& edge = *edgeItr;
         auto dfsG = DfsG(gopherEdges, holesEdges, pairedMatrix, gopherPaired, holesPaired);
         auto dfsH = DfsH(gopherEdges, holesEdges, pairedMatrix, gopherPaired, holesPaired);
 
-        // cout << "Trying edge " << edge << endl;
+        cerr << "Trying edge " << edge << endl;
         if (dfsG.findPath(edge)) {
             --toCover;
-            // cout << "Success, added from G" << endl;
+            cerr << "Success, added from G" << endl;
         } else if (dfsH.findPath(edge)) {
             --toCover;
-            // cout << "Success, added from H" << endl;
+            cerr << "Success, added from H" << endl;
         }
 
-        // auto gCnt = count(gopherPaired.begin(), gopherPaired.end(), true);
-        // auto hCnt = count(holesPaired.begin(), holesPaired.end(), true);
-        // cout << "Paired " << gCnt << ", " << hCnt << endl;
+        auto gCnt = count(gopherPaired.begin(), gopherPaired.end(), true);
+        auto hCnt = count(holesPaired.begin(), holesPaired.end(), true);
+        cerr << "Paired " << gCnt << ", " << hCnt << endl;
     }
 
     if (toCover > 0) { FAIL; }
