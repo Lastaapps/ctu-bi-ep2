@@ -1,3 +1,4 @@
+#include <ctime>
 #include <iostream>
 #include <cassert>
 #include <iterator>
@@ -6,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <set>
 
 using namespace std;
 
@@ -13,225 +15,120 @@ struct Coord {
     int16_t x, y;
 };
 struct Edge {
-    uint32_t gopher, hole;
-    double length;
+    uint16_t v;
+    double time;
+    Edge(uint16_t v, double time) : v(v), time(time) {}
+};
 
-    bool operator<(const Edge& other) const noexcept {
-        if (length != other.length) { return length < other.length; }
-        if (gopher != other.gopher) { return gopher < other.gopher; }
-        if (length != other.hole  ) { return hole   < other.hole;   }
-        return false;
+struct Flow {
+    vector<vector<size_t>> capacities;
+    vector<vector<size_t>> flows;
+    Flow(size_t size) : capacities(size, vector<size_t>(size)), flows(size, vector<size_t>(size)) {}
+
+    void setCapacity(size_t u, size_t v, size_t cap) noexcept {
+        capacities[u][v] = cap;
     }
-    bool operator>(const Edge& other) const noexcept {
-        return other < *this;
+    size_t getCapacity(size_t u, size_t v) const noexcept {
+        return capacities[u][v];
+    }
+    size_t getReserve(size_t u, size_t v) const noexcept {
+        return flows[v][u] + capacities[u][v] - flows[u][v];
+    }
+    size_t getFlow(size_t u, size_t v) const noexcept {
+        return flows[u][v];
+    }
+    void sendFlow(size_t u, size_t v, size_t flow) noexcept {
+        const size_t opposite = flows[v][u];
+        if (opposite >= flow) {
+            flows[v][u] -= flow;
+        } else {
+            flows[v][u] = 0;
+            flows[u][v] += flow - opposite;
+        }
     }
 };
 
-ostream& operator<<(ostream& out, const Edge& edge) noexcept {
-    return out << "[" << edge.gopher << "->" << edge.hole << " = " << edge.length << "]";
+size_t findForTime( vector<vector<Edge>> graph, const size_t holesCnt, double maxTime) {
+    const size_t gopherCnt = graph.size() - 2 - holesCnt;
+    Flow flow(graph.size());
+
+    // yeah, this is slow, I don't care now
+    for (size_t hole = 2; hole < holesCnt + 2; ++hole) {
+        flow.setCapacity(0, hole, 1);
+        for (size_t gopher = 2 + holesCnt; gopher < graph.size(); ++gopher) {
+            flow.setCapacity(hole, gopher, 1);
+        }
+    }
+    for (size_t gopher = 2 + holesCnt; gopher < graph.size(); ++gopher) {
+        flow.setCapacity(gopher, 1, 1);
+    }
+    
+    while(true) {
+        queue<size_t> queue;
+        vector<size_t> parents(graph.size());
+        parents[0] = 1;
+        queue.push(0);
+
+        while(!queue.empty()) {
+            size_t u = queue.front();
+            queue.pop();
+
+            for (const auto [v, time] : graph[u]) {
+                if (time > maxTime) { continue; }
+                if (parents[v] != 0) { continue; }
+
+                const size_t reserve = flow.getReserve(u, v);
+                if (reserve == 0) { continue; }
+
+                parents[v] = u + 1;
+                queue.emplace(v);
+
+                if (v == 1) {
+                    size_t to = v;
+                    size_t minFlow = ~0u;
+                    while (to != 0) {
+                        size_t from = parents[to] - 1;
+                        minFlow = min(minFlow, flow.getReserve(from, to));
+                        to = from;
+                    }
+                    // size_t minFlow = 1u;
+
+                    to = v;
+                    while (to != 0) {
+                        size_t from = parents[to] - 1;
+                        flow.sendFlow(from, to, minFlow);
+                        to = from;
+                    }
+
+                    goto end;
+                }
+            }
+
+        }
+        break;
+end:;
+    }
+
+    size_t resFlow = 0;
+    for (size_t u = 2; u < holesCnt + 2; ++u) {
+        resFlow += flow.getFlow(0, u);
+    }
+
+    // for (size_t hole = 0; hole < holesCnt; ++hole) {
+    //     for (size_t gopher = 0; gopher < graph.size() - holesCnt - 2; ++gopher) {
+    //         size_t aHole = hole + 2;
+    //         size_t aGopher = gopher + 2 + holesCnt;
+    //         if (flow.getFlow(aHole, aGopher) || flow.getFlow(aGopher, aHole)) {
+    //             cerr << gopher << " -> " << hole << endl;
+    //         }
+    //     }
+    // }
+
+    return resFlow;
 }
 
 #define SUCC(time) cout << std::fixed << std::setprecision(3) << ceil((time) * 1000) / 1000 << "\n\n"; return
 #define FAIL cout << "Too bad.\n\n"; return
-
-struct DfsG final {
-    private:
-    const vector<vector<Edge>>& gopherEdges;
-    const vector<vector<Edge>>& holesEdges;
-    std::vector<std::vector<bool>>& pairedMatrix;
-    std::vector<bool>& gopherPaired;
-    std::vector<bool>& holesPaired;
-    vector<bool> visitedGophers;
-    vector<bool> visitedHoles;
-
-    public:
-    DfsG(
-    const vector<vector<Edge>>& gopherEdges,
-    const vector<vector<Edge>>& holesEdges,
-    std::vector<std::vector<bool>>& pairedMatrix,
-    std::vector<bool>& gopherPaired,
-    std::vector<bool>& holesPaired) noexcept :
-        gopherEdges(gopherEdges),
-        holesEdges(holesEdges),
-        pairedMatrix(pairedMatrix),
-        gopherPaired(gopherPaired),
-        holesPaired(holesPaired),
-        visitedGophers(gopherEdges.size()),
-        visitedHoles(holesEdges.size())
-    {}
-
-    private:
-    bool processGopher(const Edge& addedEdge, uint32_t id) noexcept {
-        // if (addedEdge.gopher == id) {
-        //     cerr << "Reached starting point" << endl;
-        //     return true;
-        // }
-
-        if (visitedGophers[id]) { return false; }
-        visitedGophers[id] = true;
-
-        if (gopherPaired[id]) {
-            for (const auto& edge : gopherEdges[id]) {
-                if (edge > addedEdge) { break; }
-                assert(!pairedMatrix[edge.gopher][edge.hole]);
-
-                cerr << "G -> H: Trying for " << edge << endl;
-                const bool res = processHole(addedEdge, edge.hole);
-                if (res) {
-                    cerr << "G -> H: Success for " << edge << endl;
-                    pairedMatrix[edge.gopher][edge.hole] = true;
-                    return true;
-                }
-            }
-            return false;
-        } else {
-            assert(false);
-        }
-    }
-    bool processHole(const Edge& addedEdge, uint32_t id) noexcept {
-        if (visitedHoles[id]) { return false; }
-        visitedHoles[id] = true;
-
-        if (holesPaired[id]) {
-            for (const auto& edge : holesEdges[id]) {
-                if (edge > addedEdge) { break; }
-                if (!pairedMatrix[edge.gopher][edge.hole]) { continue; }
-
-                pairedMatrix[edge.gopher][edge.hole] = false;
-                cerr << "H -> G: Trying for " << edge << endl;
-                const bool res = processGopher(addedEdge, edge.gopher);
-                if (res) {
-                    cerr << "H -> G: Success for " << edge << endl;
-                    return true;
-                } else {
-                    pairedMatrix[edge.gopher][edge.hole] = true;
-                }
-                break;
-            }
-            return false;
-        } else {
-            holesPaired[id] = true;
-            return true;
-        }
-    }
-    public:
-    bool findPath(const Edge& addedEdge) noexcept {
-        if (gopherPaired[addedEdge.gopher]) { return false; }
-        visitedGophers[addedEdge.gopher] = true;
-
-        cerr << "  -> H: Success for " << addedEdge << endl;
-        const bool res = processHole(addedEdge, addedEdge.hole);
-        if (res) {
-            pairedMatrix[addedEdge.gopher][addedEdge.hole] = true;
-            gopherPaired[addedEdge.gopher] = true;
-            return true;
-        }
-        return false;
-    }
-};
-
-struct DfsH final {
-    private:
-    const vector<vector<Edge>>& gopherEdges;
-    const vector<vector<Edge>>& holesEdges;
-    std::vector<std::vector<bool>>& pairedMatrix;
-    std::vector<bool>& gopherPaired;
-    std::vector<bool>& holesPaired;
-    vector<bool> visitedGophers;
-    vector<bool> visitedHoles;
-
-    public:
-    DfsH(
-    const vector<vector<Edge>>& gopherEdges,
-    const vector<vector<Edge>>& holesEdges,
-    std::vector<std::vector<bool>>& pairedMatrix,
-    std::vector<bool>& gopherPaired,
-    std::vector<bool>& holesPaired) noexcept :
-        gopherEdges(gopherEdges),
-        holesEdges(holesEdges),
-        pairedMatrix(pairedMatrix),
-        gopherPaired(gopherPaired),
-        holesPaired(holesPaired),
-        visitedGophers(gopherEdges.size()),
-        visitedHoles(holesEdges.size())
-    {}
-
-    private:
-    bool processGopher(const Edge& addedEdge, uint32_t id, bool wasStartPaired) noexcept {
-        if (visitedGophers[id]) { return false; }
-        visitedGophers[id] = true;
-
-        if (gopherPaired[id]) {
-            for (const auto& edge : gopherEdges[id]) {
-                if (edge > addedEdge) { break; }
-                if (!pairedMatrix[edge.gopher][edge.hole]) { continue; }
-
-                pairedMatrix[edge.gopher][edge.hole] = false;
-                cerr << "G -> H: Trying for " << edge << endl;
-                const bool res = processHole(addedEdge, edge.hole, wasStartPaired);
-                if (res) {
-                    cerr << "G -> H: Success for " << edge << endl;
-                    return true;
-                } else {
-                    pairedMatrix[edge.gopher][edge.hole] = true;
-                }
-                break;
-            }
-            return false;
-        } else {
-            // if (wasStartPaired) { return false; }
-            gopherPaired[id] = true;
-            return true;
-        }
-    }
-    bool processHole(const Edge& addedEdge, uint32_t id, bool wasStartPaired) noexcept {
-        // if (addedEdge.hole == id) {
-        //     if (wasStartPaired) {
-        //         cerr << "Reached starting point" << endl;
-        //         return true;
-        //     } else {
-        //         return false;
-        //     }
-        // }
-
-        if (visitedHoles[id]) { return false; }
-        visitedHoles[id] = true;
-
-        if (holesPaired[id]) {
-            for (const auto& edge : holesEdges[id]) {
-                if (edge > addedEdge) { break; }
-                assert(!pairedMatrix[edge.gopher][edge.hole]);
-
-                cerr << "H -> G: Trying for " << edge << endl;
-                const bool res = processGopher(addedEdge, edge.gopher, wasStartPaired);
-                if (res) {
-                    cerr << "H -> G: Success for " << edge << endl;
-                    pairedMatrix[edge.gopher][edge.hole] = true;
-                    return true;
-                }
-            }
-            return false;
-        } else {
-            assert(false);
-        }
-    }
-    public:
-    bool findPath(const Edge& addedEdge) noexcept {
-        const bool wasPaired = holesPaired[addedEdge.hole];
-        // if (holesPaired[addedEdge.hole]) { return false; }
-        if (holesPaired[addedEdge.hole]) { return false; }
-        visitedHoles[addedEdge.hole] = true;
-
-        cerr << "  -> G: Success for " << addedEdge << endl;
-        const bool res = processGopher(addedEdge, addedEdge.gopher, wasPaired);
-        if (res) {
-            pairedMatrix[addedEdge.gopher][addedEdge.hole] = true;
-            holesPaired[addedEdge.hole] = true;
-            return true;
-        }
-        return false;
-    }
-};
 
 void solve(size_t caseId) {
     cout << "Case #" << caseId << ":" << endl;
@@ -239,69 +136,86 @@ void solve(size_t caseId) {
     uint32_t gopherCnt, holesCnt, canLooseCnt;
     cin >> gopherCnt >> holesCnt >> canLooseCnt;
 
-    std::vector<Coord> gophers;
-    gophers.reserve(gopherCnt);
-    std::vector<Edge> edges;
-    edges.reserve(gopherCnt * holesCnt);
+    std::set<double> uniqueTimesSet;
 
-    for (size_t i = 0; i < gopherCnt; ++i) {
-        int16_t x, y;
-        cin >> x >> y;
-        gophers.emplace_back(Coord{x, y});
-    }
-    for (uint32_t i = 0; i < holesCnt; ++i) {
-        int16_t x, y;
-        cin >> x >> y;
-        for (uint32_t j = 0; j < gopherCnt; ++j) {
-            const auto& gopher = gophers[j];
-            const auto edge = Edge{j, i, hypot(x - gopher.x, y - gopher.y)};
-            edges.emplace_back(edge);
+    // 0    - source
+    // 1    - target
+    // 2..x - holes
+    // x..  - gophers
+    const size_t total = 2 + gopherCnt + holesCnt;
+    vector<vector<Edge>> graph(total);
+
+    {
+        std::vector<Coord> gophers;
+        gophers.reserve(gopherCnt);
+
+        for (size_t i = 0; i < gopherCnt; ++i) {
+            int16_t x, y;
+            cin >> x >> y;
+            gophers.emplace_back(Coord{x, y});
+            graph[2 + holesCnt + i].push_back(Edge(1, 0.0)); // can be faster, I don't care now
+        }
+        for (uint32_t hole = 0; hole < holesCnt; ++hole) {
+            int16_t x, y;
+            cin >> x >> y;
+            for (uint32_t gopher = 0; gopher < gopherCnt; ++gopher) {
+                const auto [gx, gy] = gophers[gopher];
+                const double time = hypot(x - gx, y - gy);
+                uniqueTimesSet.insert(time);
+                graph[2 + hole].push_back(Edge(2 + holesCnt + gopher, time));
+                graph[2 + holesCnt + gopher].push_back(Edge(2 + hole, time));
+            }
+            graph[0].push_back(Edge(hole + 2u, 0.0)); // can be faster, I don't care now
         }
     }
 
-    std::sort(edges.begin(), edges.end());
+    vector<double> uniqueTimes {uniqueTimesSet.begin(), uniqueTimesSet.end()};
 
-    std::vector<std::vector<Edge>> gopherEdges(gopherCnt, std::vector<Edge>());
-    std::vector<std::vector<Edge>> holesEdges(holesCnt, std::vector<Edge>());
-
-    for (const auto& edge : edges) {
-        gopherEdges[edge.gopher].emplace_back(edge);
-        holesEdges[edge.hole].emplace_back(edge);
-    }
-
-    std::vector<bool> gopherPaired(gopherCnt);
-    std::vector<bool> holesPaired (holesCnt);
-    std::vector<std::vector<bool>> pairedMatrix(gopherCnt, std::vector<bool>(holesCnt));
     int32_t toCover = gopherCnt - canLooseCnt;
-
     if (toCover > (int32_t) holesCnt) { FAIL; }
 
-    for (const auto& edge : edges) {
-        cout << edge << endl;
-    }
-
-    auto edgeItr = edges.begin();
-    for (; toCover > 0 && edgeItr != edges.end(); edgeItr++) {
-        const auto& edge = *edgeItr;
-        auto dfsG = DfsG(gopherEdges, holesEdges, pairedMatrix, gopherPaired, holesPaired);
-        auto dfsH = DfsH(gopherEdges, holesEdges, pairedMatrix, gopherPaired, holesPaired);
-
-        cerr << "Trying edge " << edge << endl;
-        if (dfsG.findPath(edge)) {
-            --toCover;
-            cerr << "Success, added from G" << endl;
-        } else if (dfsH.findPath(edge)) {
-            --toCover;
-            cerr << "Success, added from H" << endl;
+    // int asdf = 0;
+    for (const auto& time : uniqueTimes) {
+        size_t saved = findForTime(graph, holesCnt, time);
+        // cerr << "Saved " << saved << " for time " << time << endl;
+        if (saved >= toCover) {
+            // cerr << "Answer is " << asdf << endl;
+            // break;
+            SUCC(time);
         }
-
-        auto gCnt = count(gopherPaired.begin(), gopherPaired.end(), true);
-        auto hCnt = count(holesPaired.begin(), holesPaired.end(), true);
-        cerr << "Paired " << gCnt << ", " << hCnt << endl;
+        // asdf++;
     }
+    // assert(false);
 
+    // lo -> including
+    // hi -> excluding
+    // for(size_t lo = 0, hi = uniqueTimes.size(); lo < hi;) {
+    //     size_t mid = (lo + hi) / 2;
+    //     size_t time = uniqueTimes[mid];
+    //     size_t saved = findForTime(graph, holesCnt, time);
+
+    //     cerr << "[lo, hi, mid] = ["<< lo<< ","<< hi << "->" <<mid <<  "], Time: " << time <<", Saved: "<< saved << ", Req: " << toCover << endl;;
+
+    //     if (saved >= toCover) {
+    //         hi = mid;
+    //     } else {
+    //         lo = mid + 1;
+    //     }
+    //     if (lo >= hi) {
+    //         SUCC(uniqueTimes[lo]);
+    //     }
+
+    //     // if (toCover < saved) {
+    //     //     lo = mid + 1;
+    //     // } else if (toCover > saved) {
+    //     //     hi = mid;
+    //     // } else {
+    //     //     SUCC(uniqueTimes[mid]);
+    //     // }
+    // }
+
+    FAIL;
     if (toCover > 0) { FAIL; }
-    SUCC((--edgeItr)->length);
 }
 
 int main(void) {
