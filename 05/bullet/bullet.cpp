@@ -10,50 +10,11 @@
 
 using namespace std;
 
-struct Circle {
-    int32_t x, y, r;
-};
-
-struct Line {
-    int32_t x, y, sx, sy;
-};
-
-double vectAngle(const double x1, const double y1, const double x2, const double y2) {
-    return acos((x1 * x2 + y1 * y2) / (hypot(x1, y1) * hypot(x2, y2)));
-}
-
 #define mp(x) ((x) * (x))
-
-/**
- * @return <direct, around>
- */
-pair<double, double> intersects(const Circle& c, const Line& l) {
-    const int32_t A = mp(l.sx) + mp(l.sy);
-    const int32_t B = 2 * (l.x * l.sx + l.y * l.sy - c.x*l.sx - c.y*l.sy);
-    const int32_t C = mp(l.x - c.x) + mp(l.y - c.y) - (c.r * c.r);
-
-    const int32_t D = B * B - 4 * A * C;
-    if (D < 0 || D == 0) { return {0, 0}; } 
-
-    const double t1 = ((double) -B + sqrt(D)) / (2 * A);
-    const double t2 = ((double) -B - sqrt(D)) / (2 * A);
-    if (t1 < 0 || t1 > 1) { return {0, 0}; }
-
-    const double x1 = l.x + l.sx * t1;
-    const double y1 = l.y + l.sy * t1;
-    const double x2 = l.x + l.sx * t2;
-    const double y2 = l.y + l.sy * t2;
-
-    const double dist = hypot(x1 - x2, y1 - y2);
-
-    const double angle = vectAngle(x1 - c.x, y1 - c.y, x2 - c.x, y2 - c.y);
-    const double around = c.r * angle;
-
-    return {dist, around};
-}
 
 struct Vec2 {
     double x, y;
+    Vec2() : x(0), y(0) {}
     Vec2(double x, double y) : x(x), y(y) {}
 
     double operator*(const Vec2& other) const {
@@ -78,12 +39,12 @@ std::ostream& operator<<(ostream& out, const Vec2& v) {
     return out << "[" << v.x << "," << v.y << "]";
 }
 
-struct RawCircle {
+struct Circle {
     Vec2 v;
-    int32_t r;
+    double r;
 };
 
-struct RawLine {
+struct Line {
     Vec2 v1, v2;
 };
 
@@ -91,22 +52,49 @@ bool dblEq(const double d1, const double d2) {
     return abs(d1 - d2) < DBL_EPSILON * (d1 + d2);
 }
 
-pair<double, double> intersectsNew(const RawCircle& c, const RawLine& l) {
+double vectAngle(const Vec2& v1, const Vec2& v2) {
+    return acos((v1 * v2) / (v1.norm() * v2.norm()));
+}
+
+bool isOnLine(const Line& l, const Vec2& v) {
+    return dblEq((v - l.v1).norm() + (v - l.v2).norm(), (l.v2 - l.v1).norm());
+}
+
+/**
+ * Has an unknown error inside, idk where
+ * @return <direct, around>
+ */
+pair<double, double> intersectsAnalytic(const Circle& c, const Line& l) {
+    const Vec2 v = l.v2 - l.v1;
+    const double A = mp(v.x) + mp(v.y);
+    const double B = 2 * (l.v1 * v - c.v * v);
+    const double C = mp(l.v1.x - c.v.x) + mp(l.v1.y - c.v.y) - mp(c.r);
+
+    const int32_t D = B * B - 4 * A * C;
+    if (D < 0 || D == 0) { return {0, 0}; } 
+
+    const double t1 = ((double) -B + sqrt(D)) / (2 * A);
+    const double t2 = ((double) -B - sqrt(D)) / (2 * A);
+    if (t1 < 0 || t1 > 1 || t2 < 0 || t1 > 1) { return {0, 0}; }
+
+    const Vec2 v1(l.v1.x + v.x * t1, l.v1.y + v.y * t1);
+    const Vec2 v2(l.v1.x + v.x * t2, l.v1.y + v.y * t2);
+
+    const double dist = (v1 - v2).norm();
+
+    const double angle = vectAngle(v1 - c.v, v2 - c.v);
+    const double around = c.r * angle;
+
+    return {dist, around};
+}
+
+pair<double, double> intersectsVectors(const Circle& c, const Line& l) {
     const Vec2 x = c.v - l.v1;
     const Vec2 y = l.v2 - l.v1;
-
-    // const double dist = (x * y) / y.norm();
     
     const Vec2 proj = y * ((x * y) / (y * y));
     const Vec2 diff = x - proj;
     const double dist = diff.norm();
-
-    // cerr << "x    " << x << "\n";
-    // cerr << "y    " << y << "\n";
-    // cerr << "pr   " << proj << "\n";
-    // cerr << "diff " << diff << "\n";
-    // cerr << "dist " << dist << "\n";
-    // cerr << "r    " << c.r  << "\n";
 
     if (dist >= c.r) { return {0, 0}; }
 
@@ -114,16 +102,7 @@ pair<double, double> intersectsNew(const RawCircle& c, const RawLine& l) {
     const double secant = 2 * sqrt(mp(c.r) - mp(dist));
     const double around = c.r * angle;
 
-    // cerr << "a " << angle << "\n";
-    // cerr << "s " << secant << "\n";
-    // cerr << "r " << around << "\n";
-
-    // cerr << "1 " << (proj).norm() + (proj + l.v1 - l.v2).norm() << "\n";
-    // cerr << "2 " << y.norm() << "\n";
-
-    if (!dblEq(proj.norm() + (proj + l.v1 - l.v2).norm(), y.norm())) {
-        return {0, 0};
-    }
+    if (!isOnLine(l, proj + l.v1)) { return {0, 0}; }
 
     return {secant, around};
 }
@@ -138,37 +117,31 @@ bool solve() {
 
     for (int32_t i = 0; i < circleCnt; ++i) {
         Circle c;
-        cin >> c.x >> c.y >> c.r;
+        cin >> c.v.x >> c.v.y >> c.r;
         circles.emplace_back(c);
     }
 
-    int32_t x1, x2, y1, y2;
-    cin >> x1 >> y1 >> x2 >> y2;
-    Line l{x1, y1, (int32_t) (x2 - x1), (int32_t) (y2 - y1)};
-
-    const RawLine rl{Vec2(x1, y1), Vec2(x2, y2)};
-
-    // {
-    // double direct = 0.0, around = hypot(l.sx, l.sy);
-    // for (const auto& circ : circles) {
-    //     auto [d, a] = intersects(circ, l);
-    //     direct += d;
-    //     around += a;
-    //     around -= d; 
-    // }
-    // cout << "Superman sees thru " << std::fixed << std::setprecision(2) <<  direct << " units, and flies " << around << " units.\n";
-    // }
+    Line l;
+    cin >> l.v1.x >> l.v1.y >> l.v2.x >> l.v2.y;
 
     {
-    double direct = 0.0, around = hypot(l.sx, l.sy);
-    for (const auto& circ : circles) {
-        const RawCircle ccc{Vec2(circ.x, circ.y), circ.r};
-        auto [d, a] = intersectsNew(ccc, rl);
-        direct += d;
-        around += a;
-        around -= d; 
+        double direct = 0.0, around = (l.v1 - l.v2).norm();
+        for (const auto& circ : circles) {
+            const auto [d, a] = intersectsAnalytic(circ, l);
+            direct += d;
+            around += a - d;
+        }
+        cout << "Superman sees thru " << std::fixed << std::setprecision(2) <<  direct << " units, and flies " << around << " units.\n";
     }
-    cout << "Superman sees thru " << std::fixed << std::setprecision(2) <<  direct << " units, and flies " << around << " units.\n";
+
+    {
+        double direct = 0.0, around = (l.v1 - l.v2).norm();
+        for (const auto& circ : circles) {
+            const auto [d, a] = intersectsVectors(circ, l);
+            direct += d;
+            around += a - d;
+        }
+        cout << "Superman sees thru " << std::fixed << std::setprecision(2) <<  direct << " units, and flies " << around << " units.\n";
     }
 
     return true;
