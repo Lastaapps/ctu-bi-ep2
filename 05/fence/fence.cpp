@@ -29,7 +29,6 @@ struct Vec2 {
     double operator*(const Vec2& other) const {
         return x * other.x + y * other.y;
     }
-
     Vec2 operator*(const int32_t other) const {
         return Vec2{other * x, other * y};
     }
@@ -69,8 +68,8 @@ Dir vectDir(const Vec2& v1, const Vec2& v2) {
 
 struct Tree {
     Vec2 p;
-    int32_t v;
-    int32_t l;
+    uint32_t v;
+    uint32_t l;
 
     bool operator<(const Tree& t) const noexcept {
         if (p != t.p) { return p < t.p; }
@@ -83,22 +82,20 @@ struct Tree {
 using Trees = vector<Tree>;
 
 /** <value, length> */
-tuple<uint32_t, uint32_t, uint32_t> countLost(const Trees& trees, const uint32_t mask) {
-    int32_t value = 0;
-    int32_t length = 0;
-    int32_t treeCnt = 0;
+tuple<uint32_t, uint32_t> countLost(const Trees& trees, const uint32_t mask) {
+    uint32_t value = 0;
+    uint32_t length = 0;
     for (size_t i = 0; i < trees.size(); ++i) {
         if (mask & (1 << i)) {
-            length += trees[i].l;
-            value += trees[i].v;
-        } else {
-            ++treeCnt;
+            const Tree& tree = trees[i];
+            length += tree.l;
+            value += tree.v;
         }
     }
-    return {value, length, treeCnt};
+    return {value, length};
 }
 
-template<Dir dir>
+template<Dir illegalDir>
 double recoverHull(vector<reference_wrapper<const Vec2>>& used, const Vec2& tree) {
     double sum = 0;
     while (used.size() > 1) {
@@ -106,55 +103,44 @@ double recoverHull(vector<reference_wrapper<const Vec2>>& used, const Vec2& tree
         const Vec2& prev = *++used.rbegin();
         const Vec2  x = last - prev;
         const Vec2  y = tree - last;
-        if (vectDir(x, y) != dir) {
-            break;
-        }
+        if (vectDir(x, y) != illegalDir) { break; }
         // cerr << "Popping  " << last << endl;
         sum -= x.norm();
         used.pop_back();
     }
     // cerr << "Accepted " << tree << endl;
     const Vec2& last = *  used.rbegin();
-    const Vec2  y = tree - last;
+    const Vec2 y = tree - last;
     sum += y.norm();
     used.push_back(tree);
     return sum;
 }
 
 double convexHullLength(const Trees& trees, const uint32_t mask) {
+    double sum = 0;
     // yes, should be sequence in a normal language...
     for (size_t i = 0; i < trees.size(); ++i) {
-        if (!(mask & (1 << i))) {
-            const Vec2& start = trees[i].p;
+        if (mask & (1u << i)) { continue; }
 
+        const Vec2& start = trees[i].p;
 
-            ++i;
-            for (; i < trees.size(); ++i) {
-                if (!(mask & (1u << i))) {
-                    const Vec2& second = trees[i].p;
-                    double sum = 2 * (second - start).norm();
+        vector<reference_wrapper<const Vec2>> top {start}, bottom{start};
 
-                    vector<reference_wrapper<const Vec2>> top {start, second}, bottom{start, second};
+        ++i;
+        // cerr << "Starting with " << top[0] << ", " << top[1] << endl;
+        for (; i < trees.size(); ++i) {
+            if (mask & (1u << i)) { continue; }
 
-                    ++i;
-                    // cerr << "Starting with " << top[0] << ", " << top[1] << endl;
-                    for (; i < trees.size(); ++i) {
-                        if (!(mask & (1u << i))) {
-                            const Vec2& tree = trees[i].p;
+            const Vec2& tree = trees[i].p;
 
-                            // cerr << "Adding top " << tree << endl;
-                            sum += recoverHull<Dir::RIGHT>(top,    tree);
-                            // cerr << "Adding bottom " << tree << endl;
-                            sum += recoverHull<Dir::LEFT >(bottom, tree);
-                        }
-                    }
-                    return sum;
-                }
-
-            }
+            // cerr << "Adding top " << tree << endl;
+            sum += recoverHull<Dir::RIGHT>(top,    tree);
+            // cerr << "Adding bottom " << tree << endl;
+            sum += recoverHull<Dir::LEFT >(bottom, tree);
         }
+        break;
     }
-    throw "Idk";
+    return sum;
 }
 
 bool solve() {
@@ -180,11 +166,7 @@ bool solve() {
 
     uint32_t maxLost = ~0u;
     for (uint32_t mask = 0; mask < (1u << treeCnt); ++mask) {
-        const auto [value, length, cnt] = countLost(trees, mask);
-        if (cnt < 2) {
-            maxLost = std::min(maxLost, value);
-            continue;
-        }
+        const auto [value, length] = countLost(trees, mask);
 
         if (length >= convexHullLength(trees, mask)) {
             maxLost = std::min(maxLost, value);
